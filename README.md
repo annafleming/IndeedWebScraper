@@ -1,2 +1,1 @@
 # IndeedWebScraper
-Indeed Web Scraper
