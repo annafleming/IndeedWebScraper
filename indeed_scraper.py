@@ -1,6 +1,7 @@
 import requests, re
 from bs4 import BeautifulSoup
 import urllib
+import time
 
 class IndeedScraper:
     URL = 'https://www.indeed.com'
@@ -12,11 +13,14 @@ class IndeedScraper:
         self._job_title = params['job_title']
         self._location = params['location']
         self._max_count = params['max_count']
+        self._save_links = params['save_links']
         self._saver = saver
         self._results = []
 
     def scrape_all(self):
         links = self._get_position_links()
+        if self._save_links:
+            self._saver.save_links(links)
         jobs = []
         if len(links) > 0:
             self._saver.create_file(self.COLUMN_NAMES)
@@ -47,17 +51,19 @@ class IndeedScraper:
         return links
 
     def _get_page_object(self, url):
+        time.sleep(1)
         return BeautifulSoup(requests.get(url).text,'html.parser')
 
     def _parse_position_links(self, page):
         links = []
         for header in page.find_all("h2",class_="jobtitle"):
-            links.append(header.a.get('href'))
+            if header.a:
+                links.append(header.a.get('href'))
         return links
 
     def _parse_next_page_link(self, page):
         last_page_element = page.find("div",class_="pagination").contents[-1]
-        if last_page_element.name == 'a':
+        if last_page_element and last_page_element.name == 'a':
             return self.URL + last_page_element.get('href')
         return None
 
@@ -69,9 +75,26 @@ class IndeedScraper:
         page_container = self._get_page_object(self.URL + link)
         job_container = page_container.find(id="job-content")
 
-        job_title = job_container.find(class_='jobtitle').get_text()
-        company_name = job_container.find(class_='company').get_text()
+        job_title = self._get_element_text_by_class(job_container, 'jobtitle')
+        company_name = self._get_element_text_by_class(job_container, 'company')
         job_contents = str(job_container.find(id='job_summary'))
-        location = page_container.find(id='where').attrs['value']
-
+        location = self._get_input_value_by_id(page_container, 'where')
         return dict(zip(self.COLUMN_NAMES, [job_title, company_name, job_contents, location, link]))
+
+    def _get_element_text_by_class(self, bs_object, classname):
+        page_element = bs_object.find(class_=classname)
+        if page_element:
+            return page_element.get_text()
+        return ''
+
+    def _get_element_text_by_id(self, bs_object, element_id):
+        page_element = bs_object.find(id=element_id)
+        if page_element:
+            return page_element.get_text()
+        return ''
+
+    def _get_input_value_by_id(self, bs_object, element_id):
+        page_element = bs_object.find(id=element_id)
+        if page_element:
+            return page_element.attrs['value']
+        return ''

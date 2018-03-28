@@ -15,3 +15,10 @@ class CsvSaver():
         for row in rows:
             csv_file.writerow(row.values())
         f.close()
+
+    def save_links(self, rows):
+        f = open('links_'+self._name, 'w')
+        csv_file = csv.writer(f)
+        for row in rows:
+            csv_file.writerow([row])
+        f.close()
