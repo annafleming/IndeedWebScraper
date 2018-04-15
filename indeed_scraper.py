@@ -2,6 +2,7 @@ import requests, re
 from bs4 import BeautifulSoup
 import urllib
 import time
+from selenium import webdriver
 
 class IndeedScraper:
     URL = 'https://www.indeed.com'
@@ -14,8 +15,10 @@ class IndeedScraper:
         self._location = params['location']
         self._max_count = params['max_count']
         self._save_links = params['save_links']
+        self._advance_request = params['advance_request']
         self._saver = saver
         self._results = []
+        self._driver = webdriver.PhantomJS()
 
     def scrape_all(self):
         links = self._get_position_links()
@@ -31,12 +34,13 @@ class IndeedScraper:
                     jobs = []
             if len(jobs):
                 self._saver.save_batch(jobs)
+        self._driver.close()
 
         return 'SUCCESS'
 
     def _get_position_links(self):
         links = []
-        page_url = self._form_initial_url()
+        page_url = self._get_initial_url()
         page_object = self._get_page_object(page_url)
 
         while len(links) < self._max_count:
@@ -51,8 +55,8 @@ class IndeedScraper:
         return links
 
     def _get_page_object(self, url):
-        time.sleep(1)
-        return BeautifulSoup(requests.get(url).text,'html.parser')
+        self._driver.get(url)
+        return BeautifulSoup(self._driver.page_source,'html.parser')
 
     def _parse_position_links(self, page):
         links = []
@@ -67,6 +71,13 @@ class IndeedScraper:
             return self.URL + last_page_element.get('href')
         return None
 
+    def _get_initial_url(self):
+        if self._advance_request != '':
+            return self.URL + '/' + self.JOB_PATH + '?' + self._advance_request
+        else:
+            return self._form_initial_url()
+
+
     def _form_initial_url(self):
         request_params = {'q': self._job_title, 'l': self._location}
         return self.URL + '/' + self.JOB_PATH + '?'+ urllib.parse.urlencode(request_params)
@@ -75,10 +86,12 @@ class IndeedScraper:
         page_container = self._get_page_object(self.URL + link)
         job_container = page_container.find(id="job-content")
 
-        job_title = self._get_element_text_by_class(job_container, 'jobtitle')
-        company_name = self._get_element_text_by_class(job_container, 'company')
-        job_contents = str(job_container.find(id='job_summary'))
-        location = self._get_input_value_by_id(page_container, 'where')
+        job_title = company_name = job_contents = location = ''
+        if job_container:
+            job_title = self._get_element_text_by_class(job_container, 'jobtitle')
+            company_name = self._get_element_text_by_class(job_container, 'company')
+            job_contents = ''.join(map(str, job_container.find(id='job_summary').contents))
+            location = self._get_input_value_by_id(page_container, 'where')
         return dict(zip(self.COLUMN_NAMES, [job_title, company_name, job_contents, location, link]))
 
     def _get_element_text_by_class(self, bs_object, classname):
