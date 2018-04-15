@@ -9,13 +9,14 @@ class IndeedScraper:
     JOB_PATH = 'jobs'
     COLUMN_NAMES = ['job_title', 'company_name', 'job_contents', 'location', 'link']
     MAX_BATCH_SIZE = 100
+    DEFAULT_MAX_COUNT = 100
 
     def __init__(self, params, saver):
-        self._job_title = params['job_title']
-        self._location = params['location']
-        self._max_count = params['max_count']
-        self._save_links = params['save_links']
-        self._advance_request = params['advance_request']
+        self._job_title = params['job_title'] if 'job_title' in params else None
+        self._location = params['location'] if 'location' in params else None
+        self._max_count = params['max_count'] if 'max_count' in params else self.DEFAULT_MAX_COUNT
+        self._save_links = params['save_links'] if 'save_links' in params else False
+        self._advance_request = params['advance_request'] if 'advance_request' in params else None
         self._saver = saver
         self._results = []
         self._driver = webdriver.PhantomJS()
@@ -72,13 +73,13 @@ class IndeedScraper:
         return None
 
     def _get_initial_url(self):
-        if self._advance_request != '':
+        if self._advance_request:
             return self.URL + '/' + self.JOB_PATH + '?' + self._advance_request
         else:
-            return self._form_initial_url()
+            return self._compose_initial_url()
 
 
-    def _form_initial_url(self):
+    def _compose_initial_url(self):
         request_params = {'q': self._job_title, 'l': self._location}
         return self.URL + '/' + self.JOB_PATH + '?'+ urllib.parse.urlencode(request_params)
 
