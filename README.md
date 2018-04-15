@@ -4,7 +4,7 @@ Python application for scraping job postings from Indeed.com
 
 ## How to use it?
 
-### Specifying search parameter independently
+### Specifying search parameters independently
 
 ```
   scraper = WebScraper(IndeedScraper,
