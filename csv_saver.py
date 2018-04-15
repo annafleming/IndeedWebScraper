@@ -1,6 +1,6 @@
 import csv
-class CsvSaver():
-    def __init__(self, name):
+class CsvSaver():    
+    def __init__(self, name='jobs.csv'):
         self._name = name
 
     def create_file(self, columns):
